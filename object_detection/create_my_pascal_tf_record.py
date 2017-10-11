@@ -82,8 +82,8 @@ def dict_to_tf_example(data,
   Raises:
     ValueError: if the image pointed to by data['filename'] is not a valid JPEG
   """
-  #img_path = os.path.join(image_subdirectory, data['filename'])
-  full_path = os.path.join(dataset_directory, data['filename'])
+  img_path = os.path.join(image_subdirectory, data['filename'])
+  full_path = os.path.join(dataset_directory, img_path)
   print("dataset_directory=" + dataset_directory)
   print("data['folder']="+data['folder'])
   print("full_path="+full_path)

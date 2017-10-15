@@ -6,6 +6,7 @@ import tarfile
 import tensorflow as tf
 import zipfile
 import xlwt
+import shutil
 
 from collections import defaultdict
 from io import StringIO
@@ -16,14 +17,45 @@ from utils import label_map_util
 
 from utils import visualization_utils as vis_util
 
+PATH_TO_PREDICTION_DIR = '/home/davidcui/Documents/price/prediction'
+if not os.path.exists(PATH_TO_PREDICTION_DIR):
+    print 'Directory not exist:',PATH_TO_PREDICTION_DIR
+    exit(0)
+
 # Path to frozen detection graph. This is the actual model that is used for the object detection.
-PATH_TO_CKPT = '/home/davidcui/Documents/price/models/model/graph/frozen_inference_graph.pb'
+PATH_TO_CKPT = os.path.join(PATH_TO_PREDICTION_DIR,'frozen_inference_graph.pb')
+if not os.path.exists(PATH_TO_CKPT):
+    print 'File not exist:',PATH_TO_CKPT
+    exit(0)
 
 # List of the strings that is used to add correct label for each box.
 PATH_TO_LABELS = '/home/davidcui/Documents/price/label_map.pbtxt'
+if not os.path.exists(PATH_TO_LABELS):
+    print 'File not exist:', PATH_TO_LABELS
+    exit(0)
 
-PATH_TO_RESULT_DIR = '/home/davidcui/Documents/price/models/model/prediction/'
-RESULT_FILE_NAME = 'result.xls'
+PATH_TO_TEST_IMAGES_DIR = os.path.join(PATH_TO_PREDICTION_DIR, 'test_image')
+if not os.path.exists(PATH_TO_TEST_IMAGES_DIR):
+    print 'Directory not exist:', PATH_TO_TEST_IMAGES_DIR
+    exit(0)
+
+PATH_TO_RESULT_DIR = os.path.join(PATH_TO_PREDICTION_DIR, 'result')
+PATH_TO_UP_IMAGE_DIR = os.path.join(PATH_TO_RESULT_DIR, 'up')
+PATH_TO_DOWN_IMAGE_DIR = os.path.join(PATH_TO_RESULT_DIR, 'down')
+
+if os.path.exists(PATH_TO_RESULT_DIR):
+    shutil.rmtree(PATH_TO_RESULT_DIR)
+    print 'Delete exisint directory ',PATH_TO_RESULT_DIR
+
+os.mkdir(PATH_TO_RESULT_DIR)
+os.mkdir(PATH_TO_UP_IMAGE_DIR)
+os.mkdir(PATH_TO_DOWN_IMAGE_DIR)
+print 'Create directory', PATH_TO_RESULT_DIR
+print 'Create directory', PATH_TO_UP_IMAGE_DIR
+print 'Create directory', PATH_TO_DOWN_IMAGE_DIR
+
+
+RESULT_EXCEL_FILE_PATH = os.path.join(PATH_TO_RESULT_DIR,'result.xls')
 
 NUM_CLASSES = 2
 
@@ -49,7 +81,6 @@ def load_image_into_numpy_array(image):
 
 #load test image
 # use all the jpeg images in test_image
-PATH_TO_TEST_IMAGES_DIR = '/home/davidcui/Documents/price/models/model/test_image'
 files = os.listdir(PATH_TO_TEST_IMAGES_DIR)
 jpeg_files = []
 for file in files:
@@ -57,10 +88,6 @@ for file in files:
         jpeg_files.append(file)
 
 TEST_IMAGE_PATHS = [ os.path.join(PATH_TO_TEST_IMAGES_DIR, name) for name in jpeg_files ]
-
-#delete the result file
-if os.path.exists(os.path.join(PATH_TO_RESULT_DIR, RESULT_FILE_NAME)):
-    os.remove(os.path.join(PATH_TO_RESULT_DIR, RESULT_FILE_NAME))
 
 #create result file work book
 result_data = xlwt.Workbook()
@@ -119,6 +146,7 @@ with detection_graph.as_default():
           sheet.write(cursor[squeeze_classes[i] - 1], 0, os.path.basename(image_path))
           sheet.write(cursor[squeeze_classes[i] - 1], 1, format(int(100*squeeze_scores[i])))
           cursor[squeeze_classes[i] - 1] += 1
+
       print(image_path + ': ' + result_str)
       # Visualization of the results of a detection.
       vis_util.visualize_boxes_and_labels_on_image_array(
@@ -131,9 +159,14 @@ with detection_graph.as_default():
           line_thickness=8)
       #plt.figure(figsize=IMAGE_SIZE)
       #plt.imshow(image_np)
-      Image.fromarray(image_np).save(os.path.join(PATH_TO_RESULT_DIR, os.path.basename(image_path)))
+      if(class_name == 'up'):
+          up_image_file = os.path.join(PATH_TO_UP_IMAGE_DIR, score_str+'_'+os.path.basename(image_path))
+          Image.fromarray(image_np).save(up_image_file)
+          print 'Save file ',up_image_file
+      elif(class_name == 'down'):
+          down_image_file = os.path.join(PATH_TO_DOWN_IMAGE_DIR, score_str+'_'+os.path.basename(image_path))
+          Image.fromarray(image_np).save(down_image_file)
+          print 'Save file ', down_image_file
 
 # save the results in Excel file
-result_fp = os.path.join(PATH_TO_RESULT_DIR, 'result.xls')
-# create the file, it will be overwritten if existing
-result_data.save(result_fp)
+result_data.save(RESULT_EXCEL_FILE_PATH)
